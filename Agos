@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Para Agos</title>
+<style>
+  :root { --ritmo: 1.2s; }
+  body {
+    margin: 0; padding: 0; min-height: 100vh;
+    background-color: #fafafa; color: #111;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    overflow-x: hidden; position: relative;
+  }
+
+  /* PUNTOS NEGROS SUTILES EN MOVIMIENTO */
+  body::before {
+    content: ""; position: fixed; top: 0; left: 0; width: 200%; height: 200%;
+    background-image: radial-gradient(#000 10%, transparent 11%);
+    background-size: 40px 40px; animation: moveDots 25s linear infinite;
+    opacity: 0.05; z-index: -2; pointer-events: none;
+  }
+  @keyframes moveDots {
+    from { transform: translate(0, 0); }
+    to { transform: translate(-40px, -40px); }
+  }
+
+  /* PANTALLA DE CLICKS (INICIAL) */
+  #pantalla-clicks {
+    position: absolute; width: 100%; height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 20; background: #fafafa; transition: opacity 0.5s ease;
+  }
+  #contador-clicks { font-size: 1.5rem; font-weight: bold; margin-bottom: 30px; color: #333; user-select: none; }
+  
+  /* CORAZÓN GIGANTE PARA TOCAR */
+  #bloque-corazon { cursor: pointer; transition: transform 0.1s; margin-bottom: 20px; user-select: none; }
+  .heart-main {
+    width: 70px; height: 70px; background: #ff2e63; transform: rotate(-45deg);
+    position: relative; animation: latido var(--ritmo) infinite ease-in-out;
+    box-shadow: 0 0 20px rgba(255, 46, 99, 0.3);
+  }
+  .heart-main::before, .heart-main::after {
+    content: ""; width: 70px; height: 70px; background: #ff2e63; border-radius: 50%; position: absolute;
+  }
+  .heart-main::before { top: -35px; }
+  .heart-main::after { left: 35px; }
+  @keyframes latido {
+    0%, 100% { transform: scale(1) rotate(-45deg); }
+    50% { transform: scale(1.12) rotate(-45deg); }
+  }
+
+  /* CORAZONES Y DESTELLOS CAYENDO DE FONDO */
+  .corazon-caida {
+    position: absolute; pointer-events: none;
+    animation: caer 4s linear forwards; z-index: -1;
+    opacity: 0.7;
+  }
+  @keyframes caer {
+    0% { transform: translateY(-50px) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.6; }
+    90% { opacity: 0.6; }
+    100% { transform: translateY(105vh) rotate(360deg); opacity: 0; }
+  }
+
+  /* CONTENEDOR DE LA CARTA CON EFECTO REVELADO */
+  .carta-container {
+    width: 85%; max-width: 450px; background: white;
+    border: 1px solid #eaeaea; border-radius: 20px;
+    padding: 35px 25px; box-sizing: border-box;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.03); z-index: 5;
+    display: none; flex-direction: column; height: 520px;
+    opacity: 0; transform: translateY(30px);
+    transition: opacity 1s ease, transform 1s ease;
+  }
+
+  .carta-header { font-size: 1.8rem; font-weight: 800; color: #000; margin-bottom: 5px; }
+  .carta-sub { font-size: 0.9rem; color: #888; margin-bottom: 20px; }
+
+  .scroll-texto { width: 100%; flex-grow: 1; overflow-y: auto; scroll-behavior: smooth; padding-right: 5px; }
+  .scroll-texto::-webkit-scrollbar { display: none; }
+
+  .carta-texto { font-size: 1.05rem; line-height: 1.8; color: #222; white-space: pre-line; text-align: left; }
+  .firma { margin-top: 30px; font-weight: bold; color: #000; font-size: 1.1rem; border-top: 1px solid #f0f0f0; padding-top: 20px; display: none; }
+  .corazon-deco { color: #ff2e63; display: inline-block; margin-left: 5px; }
+</style>
+</head>
+<body>
+
+  <audio id="snd-magico" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3" preload="auto"></audio>
+  <audio id="musica-tierna" src="https://assets.mixkit.co/active_storage/musical_tracks/92/92-preview.mp3" loop preload="auto"></audio>
+
+  <div id="pantalla-clicks">
+    <div id="contador-clicks">Tocá el corazón: 0 / 67</div>
+    <div id="bloque-corazon" onclick="registrarClick()">
+      <div class="heart-main"></div>
+    </div>
+    <p style="color: #888; font-size: 0.9rem;">Para desbloquear tu carta, Agos</p>
+  </div>
+
+  <div class="carta-container" id="box-carta">
+    <div class="carta-header">Para Agos</div>
+    <div class="carta-sub">20 de Mayo</div>
+    
+    <div class="scroll-texto" id="scroller">
+      <div class="carta-texto" id="texto-vivo"></div>
+      <div class="firma" id="firma-bloque">Con todo mi amor, Nelson<span class="corazon-deco">❤️</span></div>
+    </div>
+  </div>
+
+<script>
+  let clics = 0;
+  const meta = 67;
+
+  function registrarClick() {
+    clics++;
+    document.getElementById('contador-clicks').innerText = `Tocá el corazón: ${clics} / ${meta}`;
+    
+    const bloque = document.getElementById('bloque-corazon');
+    bloque.style.transform = 'scale(0.85)';
+    setTimeout(() => bloque.style.transform = 'scale(1)', 80);
+    
+    let nuevoRitmo = Math.max(1.2 - (clics * 0.015), 0.15);
+    document.documentElement.style.setProperty('--ritmo', nuevoRitmo + 's');
+
+    if (clics >= meta) {
+      const pClicks = document.getElementById('pantalla-clicks');
+      pClicks.style.opacity = '0';
+      setTimeout(() => {
+        pClicks.style.display = 'none';
+        abrirCartaReal();
+      }, 500);
+    }
+  }
+
+  function abrirCartaReal() {
+    document.getElementById('snd-magico').play().catch(e => console.log("Sonido bloqueado"));
+    
+    const musica = document.getElementById('musica-tierna');
+    musica.volume = 0.2; 
+    musica.play().catch(e => console.log("Música bloqueada"));
+
+    const boxCarta = document.getElementById('box-carta');
+    boxCarta.style.display = 'flex';
+    
+    setTimeout(() => {
+      boxCarta.style.opacity = '1';
+      boxCarta.style.transform = 'translateY(0)';
+      
+      escribir();
+      setInterval(crearCorazon, 350);
+    }, 100);
+  }
+
+  // TEXTO ORIGINAL MANTENIENDO TUS LÍNEAS FINALES
+  const textoCarta = `Sé que pasamos por un montón de tormentas, idas y vueltas, y momentos en los que parecía que todo se nos iba de las manos. Nos equivocamos, nos distanciamos y pasaron cosas que dolieron, pero hoy que llega otra vez el 20, me doy cuenta de que no puedo ni quiero ocultar lo que me pasa con vos.
+
+Llevar esto a la distancia es re difícil y a veces es un bajón no poder cruzarnos cuando queremos, pero cada vez que nos alejamos termino extrañando todo de nosotros. Me enamoré de verdad de tu forma de ser, de nuestras charlas interminables y de cómo conectamos a pesar de los kilómetros, sin barreras de por medio. No me importa el pasado ni los errores que hayamos cometido atrás; a mí lo único que me importa es el presente y las ganas que tengo de que esto funcione de en serio para que algún día podamos vernos y mandar a la mierda toda la distancia.
+
+Sos la persona que quiero cuidar y la que me vuela la cabeza todos los días a través de la pantalla. Quiero que dejemos atrás todo lo que nos hizo mal y las dudas, para empezar a hacer las cosas bien, de verdad, apoyándonos mutuamente y valorando lo que tenemos, que es único.
+
+Gracias por cada oportunidad y por seguir acá a pesar de mis defectos y mis días difíciles. Te amo muchísimo, Agos, más de lo que a veces me sale decirte en un mensaje, y espero que este día sea el comienzo de nuestra mejor etapa juntos mi bb hermosa 💜 te amo cada liniea q me Ise con los cuchillo fueron por vos cada gota de sangre xd q decía watajai me quedé sin ideas.`;
+
+  let index = 0;
+  const velocidad = 50; 
+
+  function escribir() {
+    if (index < textoCarta.length) {
+      const contenedor = document.getElementById('texto-vivo');
+      const scroller = document.getElementById('scroller');
+      
+      contenedor.innerHTML += textoCarta.charAt(index);
+      index++;
+      scroller.scrollTop = scroller.scrollHeight;
+      
+      setTimeout(escribir, velocidad);
+    } else {
+      document.getElementById('firma-bloque').style.display = 'block';
+      const scroller = document.getElementById('scroller');
+      scroller.scrollTop = scroller.scrollHeight;
+    }
+  }
+
+  // LLUVIA CON TUS EMOJIS VARIADOS
+  function crearCorazon() {
+    const c = document.createElement('div');
+    c.className = 'corazon-caida';
+    c.innerText = ['💫', '⭐', '💗', '💕', '💞', '💝', '🩷', '🫀', '❤️'][Math.floor(Math.random() * 9)];
+    c.style.left = Math.random() * window.innerWidth + 'px';
+    c.style.top = '-40px';
+    c.style.fontSize = Math.random() * 18 + 14 + 'px';
+    c.style.animationDuration = Math.random() * 2 + 3 + 's';
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 5000);
+  }
+</script>
+</body>
+</html>
